@@ -2411,6 +2411,25 @@ const RawMeasurementsPage = () => {
                   <Section label="How much to trust it">
                     <p style={{ margin: 0 }}>{m.trustDetail}</p>
                   </Section>
+
+                  {(() => {
+                    const relatedOpps = SIGNAL_OPPORTUNITIES.filter(o => o.signals.includes(m.id));
+                    if (relatedOpps.length === 0) return null;
+                    return (
+                      <Section label="Signal opportunities">
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          {relatedOpps.map(o => (
+                            <div key={o.id} style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(83,74,183,0.04)", border: "1px solid rgba(83,74,183,0.1)" }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#534AB7", marginBottom: 4 }}>{o.title}</div>
+                              <div style={{ fontSize: 12, color: "rgba(60,60,55,0.6)", lineHeight: 1.5 }}>
+                                Combines with: {o.signalNames.filter(s => s !== m.name).join(", ")}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </Section>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -2525,7 +2544,9 @@ const CategoriesPage = () => {
                         padding: "8px 12px", borderRadius: 8,
                         background: "rgba(120,120,110,0.03)",
                       }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a18", marginBottom: 2 }}>{m.name}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a18", marginBottom: 2 }}>
+                          <MeasurementPopover measurementId={m.id}>{m.name}</MeasurementPopover>
+                        </div>
                         <div style={{ fontSize: 12, color: "rgba(60,60,55,0.5)" }}>
                           {m.source}
                         </div>
@@ -3674,7 +3695,7 @@ const ApproachesPage = () => {
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "#1a1a18", letterSpacing: -0.5 }}>Framing choices</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "#1a1a18", letterSpacing: -0.5 }}>Framing & combos</h1>
         <p style={{ fontSize: 15, color: "rgba(60,60,55,0.7)", lineHeight: 1.6, maxWidth: 640 }}>
           When you show someone their health, what story are you telling? Just the raw data, a single overall number, or something in the middle? Each framing makes a different trade-off between simplicity and detail, engagement and overwhelm, transparency and usability. These are the main options, from least interpretation to most.
         </p>
@@ -5853,7 +5874,615 @@ const LibraryPage = () => {
 };
 
 
-/* ─── PAGE: Case Study - Medication Adherence ─── */
+/* ─── COMPONENT: Measurement Popover ─── */
+const MeasurementPopover = ({ measurementId, children, allMeasurements }) => {
+  const [open, setOpen] = useState(false);
+  const m = (allMeasurements || RAW_MEASUREMENTS).find(x => x.id === measurementId);
+  if (!m) return children || null;
+  return (
+    <span style={{ position: "relative", display: "inline" }}>
+      <span
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{
+          borderBottom: "1px dashed rgba(29,158,117,0.5)", cursor: "pointer",
+          color: "#0F6E56", fontWeight: 500,
+        }}
+      >{children || m.name}</span>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} />
+          <div style={{
+            position: "absolute", bottom: "100%", left: "50%", transform: "translateX(-50%)",
+            width: 340, padding: "16px 18px", background: "#fff", borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)",
+            zIndex: 100, marginBottom: 8,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a18", marginBottom: 8 }}>{m.name}</div>
+            <div style={{ fontSize: 12, color: "rgba(60,60,55,0.7)", lineHeight: 1.6, marginBottom: 10 }}>
+              {m.whatIsMeasured.length > 200 ? m.whatIsMeasured.slice(0, 200) + "..." : m.whatIsMeasured}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(120,120,110,0.08)", color: "rgba(60,60,55,0.6)" }}>{m.source}</span>
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(120,120,110,0.08)", color: "rgba(60,60,55,0.6)" }}>{m.cognitiveLoad}</span>
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(120,120,110,0.08)", color: "rgba(60,60,55,0.6)" }}>{m.impactability}</span>
+            </div>
+            {m.examples && m.examples[0] && (
+              <div style={{ fontSize: 11, color: "rgba(60,60,55,0.6)", lineHeight: 1.5, padding: "8px 10px", background: "rgba(120,120,110,0.04)", borderRadius: 8 }}>
+                <span style={{ fontWeight: 600 }}>{m.examples[0].value}</span> {" - "} {m.examples[0].meaning.length > 120 ? m.examples[0].meaning.slice(0, 120) + "..." : m.examples[0].meaning}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: "#0F6E56", marginTop: 8, cursor: "pointer", fontWeight: 500 }} onClick={() => setOpen(false)}>Close</div>
+          </div>
+        </>
+      )}
+    </span>
+  );
+};
+
+
+/* ─── DATA: Signal Opportunities ─── */
+const SIGNAL_OPPORTUNITIES = [
+  {
+    id: "recovery_picture",
+    title: "The recovery picture",
+    signals: ["hrv", "rhr", "sleep_quality", "sleep_duration"],
+    signalNames: ["HRV", "Resting heart rate", "Sleep quality (deep + REM)", "Total sleep time"],
+    insight: "Any one of these tells you something about recovery. Together, they tell you whether someone is actually ready for what the day demands. A low HRV with a high resting heart rate and poor sleep is a clear signal to pull back. But a low HRV with great sleep might just mean a hard workout yesterday, which is fine.",
+    opportunity: "Most products show these as separate numbers on separate screens. The opportunity is a single morning view that synthesizes all four into an honest assessment: 'Your body is still catching up. Here is what that means for your plans today.'",
+    whoDoesItWell: "WHOOP's Recovery score comes closest, combining HRV, RHR, and sleep. Oura's Readiness score is similar. Neither fully integrates the qualitative sleep experience.",
+    gap: "No product currently weighs the subjective experience of sleep alongside the biometric signals. Someone can have good HRV but feel terrible, and that mismatch is itself informative.",
+  },
+  {
+    id: "metabolic_context",
+    title: "Glucose in context",
+    signals: ["cgm", "sleep_duration", "stress", "nutrition"],
+    signalNames: ["Continuous glucose", "Sleep duration", "Stress level", "Nutrition intake"],
+    insight: "A glucose spike after lunch looks alarming in isolation. But if that person slept four hours, is under work stress, and skipped breakfast, the spike is expected and the intervention is not about food. Without the surrounding context, CGM data drives anxiety instead of understanding.",
+    opportunity: "Connect glucose patterns to the behavioral and physiological context that explains them. Instead of 'your glucose spiked to 162,' show 'your glucose spiked after lunch, which is typical on days when you sleep under five hours.'",
+    whoDoesItWell: "Levels and Supersapiens have started adding meal context. No product yet integrates sleep and stress data alongside glucose patterns in a meaningful way.",
+    gap: "The biggest gap is connecting the dots across data sources. Glucose apps don't read sleep data. Sleep apps don't read glucose data. The user is left to make the connections themselves.",
+  },
+  {
+    id: "stress_accumulation",
+    title: "The stress accumulation signal",
+    signals: ["hrv", "stress", "sleep_latency", "mood"],
+    signalNames: ["HRV", "Physiological stress", "Sleep latency", "Mood rating"],
+    insight: "Stress builds up in ways that single measurements miss. HRV drops gradually. Sleep onset takes longer. Mood dips. Each of these alone might seem like a normal fluctuation. But when all four trend in the wrong direction over a week, that is a meaningful pattern that warrants intervention before it becomes burnout or illness.",
+    opportunity: "A weekly or bi-weekly synthesis that detects multi-signal stress accumulation and surfaces it before the user hits a wall. Not a daily alert, but a pattern recognition system that says 'the last 10 days show a consistent stress pattern across your sleep, heart rate, and mood.'",
+    whoDoesItWell: "Garmin's Body Battery touches on this by combining stress and sleep. WHOOP's strain-to-recovery ratio is related. Neither explicitly tracks accumulation over a multi-week period.",
+    gap: "No product currently does true multi-week stress pattern detection across both physiological and psychological signals.",
+  },
+  {
+    id: "fitness_trajectory",
+    title: "Fitness trajectory, not snapshots",
+    signals: ["vo2max", "rhr", "hr_recovery", "hr_active"],
+    signalNames: ["VO2 Max estimate", "Resting heart rate", "Heart rate recovery", "Active heart rate"],
+    insight: "VO2 Max is the gold standard fitness metric, but it moves slowly and is estimated imprecisely by wearables. Resting heart rate and heart rate recovery move faster and are measured more accurately. Active heart rate for the same workout intensity is the most immediate feedback. Together, these four paint a fitness trajectory that no single metric can provide.",
+    opportunity: "Show fitness as a trajectory rather than a point. 'Your VO2 Max hasn't changed this month, but your resting heart rate has dropped 3 bpm and you are recovering 15% faster after runs. Your fitness is improving; the VO2 number will catch up.'",
+    whoDoesItWell: "Garmin and Apple both show VO2 Max trends. No product currently synthesizes the faster-moving indicators to provide confidence when the slow-moving headline number has not budged yet.",
+    gap: "The confidence gap: users doing everything right can get discouraged when VO2 Max does not move for weeks. The faster signals could provide reassurance and motivation during that plateau.",
+  },
+  {
+    id: "medication_reality",
+    title: "Medication impact beyond adherence",
+    signals: ["med_adherence", "side_effects", "bp_systolic", "mood"],
+    signalNames: ["Medication taken", "Side effects", "Blood pressure", "Mood rating"],
+    insight: "Medication adherence is typically tracked as a binary: did they take it or not? But the real question is whether the medication is working and at what cost. Someone might be perfectly adherent but dealing with side effects that erode their quality of life, or they might skip doses because of how the medication makes them feel.",
+    opportunity: "Connect adherence data to the outcomes the medication is supposed to affect and the side effects that might undermine it. 'You have taken your blood pressure medication 28 of the last 30 days. Your blood pressure has come down from 148/92 to 132/84. You have reported fatigue on 12 of those days, which is a known side effect worth discussing with your doctor.'",
+    whoDoesItWell: "No consumer product does this well. Clinical systems track adherence and outcomes separately. The connection between them is left to the clinician to make during appointments.",
+    gap: "The entire space of connecting medication adherence to both outcomes and quality of life is wide open for product innovation.",
+  },
+  {
+    id: "sleep_architecture",
+    title: "Sleep architecture and daily performance",
+    signals: ["sleep_deep", "sleep_rem", "sleep_duration", "mood", "stress"],
+    signalNames: ["Deep sleep", "REM sleep", "Total sleep time", "Mood rating", "Stress level"],
+    insight: "Total sleep time gets all the attention, but sleep architecture (the ratio of deep, REM, and light sleep) has a bigger impact on how someone feels and functions. A person who gets seven hours with strong deep sleep phases will feel dramatically different from someone who gets seven hours of mostly light sleep. Connecting sleep stages to next-day mood and stress levels reveals which aspects of sleep actually matter for each individual.",
+    opportunity: "Move beyond 'you slept 7 hours' to 'your deep sleep was 22% below your baseline last night, which tends to correlate with higher stress and lower mood for you the following afternoon. Consider avoiding high-stakes decisions after 2pm.'",
+    whoDoesItWell: "Oura shows sleep stage breakdowns clearly. WHOOP connects sleep to recovery. No product yet draws the line from specific sleep architecture patterns to predicted next-day experience.",
+    gap: "Personalized sleep-to-performance correlations. The data exists in most wearables. The connection to daytime experience is not being made.",
+  },
+  {
+    id: "body_composition_context",
+    title: "Body composition in the full picture",
+    signals: ["weight", "body_fat", "waist", "nutrition", "steps"],
+    signalNames: ["Body weight", "Body fat percentage", "Waist circumference", "Calories consumed", "Steps"],
+    insight: "Weight is the most emotionally loaded health number. It fluctuates daily for reasons that have nothing to do with fat gain or loss. Body fat percentage and waist circumference move more slowly but tell a more honest story. Connecting these to nutrition and activity patterns transforms a potentially demoralizing number into an understandable trend.",
+    opportunity: "Show body composition changes alongside the behavioral context. 'Your weight is up 2 pounds this week, but your waist is unchanged and your activity has increased. This is likely muscle and water, not fat.' This kind of contextual framing prevents the scale from driving unhealthy behavior.",
+    whoDoesItWell: "Withings connects weight trends to activity. No product does a good job of contextualizing weight fluctuations with enough behavioral data to prevent misinterpretation.",
+    gap: "Emotionally intelligent body composition tracking that actively prevents the harm that isolated weight numbers can cause.",
+  },
+];
+
+
+/* ─── PAGE: Signal Opportunities ─── */
+const SignalOpportunitiesPage = () => {
+  const [expanded, setExpanded] = useState(null);
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "#1a1a18", letterSpacing: -0.5 }}>Signal opportunities</h1>
+        <p style={{ fontSize: 15, color: "rgba(60,60,55,0.7)", lineHeight: 1.6, maxWidth: 640 }}>
+          Individual measurements are useful, but combining the right signals at the right time creates something greater. These are the combinations where reading signals together reveals insights that none of them provide alone, and where current products leave the most on the table.
+        </p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {SIGNAL_OPPORTUNITIES.map(opp => {
+          const isOpen = expanded === opp.id;
+          return (
+            <div key={opp.id} onClick={() => setExpanded(isOpen ? null : opp.id)} style={{
+              border: "1px solid", borderColor: isOpen ? "rgba(83,74,183,0.35)" : "rgba(120,120,110,0.12)",
+              borderRadius: 12, padding: isOpen ? "18px 20px" : "14px 18px", cursor: "pointer",
+              background: isOpen ? "rgba(83,74,183,0.02)" : "transparent", transition: "all 0.15s",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "#1a1a18", marginBottom: 4 }}>{opp.title}</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                    {opp.signalNames.map(s => (
+                      <span key={s} style={{ fontSize: 11, padding: "2px 10px", borderRadius: 10, background: "rgba(83,74,183,0.08)", color: "#534AB7", fontWeight: 500 }}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+                <span style={{ fontSize: 14, color: "rgba(60,60,55,0.25)", fontWeight: 300, marginTop: 4 }}>{isOpen ? "−" : "+"}</span>
+              </div>
+              {isOpen && (
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(120,120,110,0.08)" }}>
+                  <Section label="The insight">{opp.insight}</Section>
+                  <Section label="The opportunity">{opp.opportunity}</Section>
+                  <Section label="Who does it well today">{opp.whoDoesItWell}</Section>
+                  <Section label="The gap">{opp.gap}</Section>
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(60,60,55,0.4)", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Signals involved</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {opp.signals.map(sigId => {
+                        const m = RAW_MEASUREMENTS.find(x => x.id === sigId);
+                        return m ? (
+                          <div key={sigId} style={{ padding: "6px 10px", borderRadius: 8, background: "rgba(120,120,110,0.04)", fontSize: 12 }}>
+                            <MeasurementPopover measurementId={sigId}>
+                              {m.name}
+                            </MeasurementPopover>
+                            <span style={{ color: "rgba(60,60,55,0.45)", marginLeft: 8 }}>{m.source}</span>
+                          </div>
+                        ) : (
+                          <div key={sigId} style={{ padding: "6px 10px", borderRadius: 8, background: "rgba(120,120,110,0.04)", fontSize: 12, color: "rgba(60,60,55,0.55)" }}>
+                            {opp.signalNames[opp.signals.indexOf(sigId)]}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
+/* ─── DATA: Prototype Templates ─── */
+const DISPLAY_STYLES = [
+  { id: "numeric", label: "Numeric card", desc: "Big number with contextual label and status" },
+  { id: "narrative", label: "Narrative card", desc: "Text-forward, no prominent number" },
+  { id: "trend", label: "Trend view", desc: "Number with direction indicator and sparkline" },
+  { id: "status", label: "Status view", desc: "Zone or traffic-light based display" },
+  { id: "composite", label: "Composite card", desc: "Multiple related measurements together" },
+];
+
+const USER_STATES = [
+  { id: "new", label: "New", desc: "No data yet", color: "#854F0B", bg: "rgba(186,117,23,0.06)" },
+  { id: "struggling", label: "Struggling", desc: "Concerning data", color: "#A32D2D", bg: "rgba(163,45,45,0.06)" },
+  { id: "steady", label: "Steady", desc: "Average, maintenance", color: "#185FA5", bg: "rgba(55,138,221,0.06)" },
+  { id: "thriving", label: "Thriving", desc: "Healthy, on track", color: "#0F6E56", bg: "rgba(29,158,117,0.06)" },
+];
+
+const PREBUILT_TEMPLATES = [
+  {
+    measurementId: "rhr", measurementName: "Resting heart rate", displayStyle: "numeric",
+    states: {
+      new: { headline: "Resting heart rate", value: "-- bpm", context: "Wear your device to sleep tonight and your resting heart rate will appear here in the morning.", status: "Waiting for data", statusColor: "#854F0B" },
+      struggling: { headline: "Resting heart rate", value: "82 bpm", context: "Your resting heart rate has been elevated for the past week, averaging 80-84 bpm. This is above the typical range and has been trending upward. Consider whether stress, sleep, or alcohol might be contributing.", status: "Elevated", statusColor: "#A32D2D" },
+      steady: { headline: "Resting heart rate", value: "68 bpm", context: "Right in the middle of the normal range. Your resting heart rate has been stable over the past two weeks, varying between 65 and 71 bpm.", status: "Normal", statusColor: "#185FA5" },
+      thriving: { headline: "Resting heart rate", value: "55 bpm", context: "Excellent. A resting heart rate in the mid-50s indicates strong cardiovascular fitness. Yours has been consistently in this range for the past month.", status: "Excellent", statusColor: "#0F6E56" },
+    },
+  },
+  {
+    measurementId: "rhr", measurementName: "Resting heart rate", displayStyle: "narrative",
+    states: {
+      new: { headline: "Your heart at rest", narrative: "Once you have worn your device overnight, we will start tracking how your heart behaves while you sleep. This is one of the simplest and most reliable indicators of your overall cardiovascular health." },
+      struggling: { headline: "Your heart is working harder than usual", narrative: "Over the past week, your heart has been beating about 82 times per minute while you sleep. That is faster than your usual pace. This often happens when your body is dealing with something: stress, poor sleep, fighting off a cold, or too many late nights. It is not a crisis, but it is your body asking for a bit more care." },
+      steady: { headline: "Your heart is in a good rhythm", narrative: "At 68 beats per minute at rest, your heart is doing its job without working too hard. This has been consistent for a couple of weeks, which is a good sign. You are in the range where most healthy adults land." },
+      thriving: { headline: "Your heart is cruising", narrative: "At 55 beats per minute, your heart barely has to try. This kind of resting rate usually comes from consistent exercise over months or years. Your cardiovascular system is efficient and well-conditioned. Keep doing what you are doing." },
+    },
+  },
+  {
+    measurementId: "rhr", measurementName: "Resting heart rate", displayStyle: "trend",
+    states: {
+      new: { headline: "Resting heart rate", value: "--", direction: "none", trendNote: "Data collection begins tonight", sparkData: [] },
+      struggling: { headline: "Resting heart rate", value: "82", unit: "bpm", direction: "up", trendNote: "+6 bpm over past 2 weeks", sparkData: [72, 74, 75, 76, 78, 79, 80, 82, 81, 83, 82, 80, 82, 82] },
+      steady: { headline: "Resting heart rate", value: "68", unit: "bpm", direction: "flat", trendNote: "Stable for 14 days", sparkData: [67, 69, 68, 70, 67, 68, 69, 68, 67, 69, 68, 68, 69, 68] },
+      thriving: { headline: "Resting heart rate", value: "55", unit: "bpm", direction: "down", trendNote: "-3 bpm over past month", sparkData: [60, 59, 58, 58, 57, 57, 56, 56, 55, 56, 55, 55, 54, 55] },
+    },
+  },
+  {
+    measurementId: "hrv", measurementName: "Heart rate variability", displayStyle: "numeric",
+    states: {
+      new: { headline: "Heart rate variability", value: "-- ms", context: "HRV is highly personal. We need about a week of overnight data to establish your baseline before this number becomes meaningful.", status: "Building baseline", statusColor: "#854F0B" },
+      struggling: { headline: "Heart rate variability", value: "28 ms", context: "Your HRV has been well below your personal baseline of 52 ms for the past five days. Sustained low HRV often reflects accumulated stress, poor sleep, illness, or overtraining.", status: "Below baseline", statusColor: "#A32D2D" },
+      steady: { headline: "Heart rate variability", value: "48 ms", context: "Tracking close to your personal baseline of 52 ms. Normal day-to-day variation. Your autonomic nervous system is in a balanced state.", status: "At baseline", statusColor: "#185FA5" },
+      thriving: { headline: "Heart rate variability", value: "71 ms", context: "Significantly above your baseline. Your body is well-recovered and adapting positively. This is the kind of reading that follows a stretch of good sleep, moderate exercise, and low stress.", status: "Above baseline", statusColor: "#0F6E56" },
+    },
+  },
+  {
+    measurementId: "cgm", measurementName: "Continuous glucose", displayStyle: "status",
+    states: {
+      new: { headline: "Glucose monitoring", zones: [{ label: "In range", pct: "--", color: "#0F6E56" }, { label: "Above", pct: "--", color: "#A32D2D" }, { label: "Below", pct: "--", color: "#854F0B" }], note: "Apply your CGM sensor to begin tracking. You will see your first patterns within 24 hours." },
+      struggling: { headline: "Time in range", zones: [{ label: "In range", pct: "54%", color: "#A32D2D" }, { label: "Above", pct: "38%", color: "#A32D2D" }, { label: "Below", pct: "8%", color: "#854F0B" }], note: "You spent significant time above target range today, primarily after meals. Your post-lunch spike reached 198 mg/dL and took over 3 hours to return to baseline." },
+      steady: { headline: "Time in range", zones: [{ label: "In range", pct: "72%", color: "#185FA5" }, { label: "Above", pct: "22%", color: "#854F0B" }, { label: "Below", pct: "6%", color: "#854F0B" }], note: "Solid day. A couple of moderate spikes after meals but nothing prolonged. You are close to the 70% target that most guidelines recommend." },
+      thriving: { headline: "Time in range", zones: [{ label: "In range", pct: "92%", color: "#0F6E56" }, { label: "Above", pct: "6%", color: "#0F6E56" }, { label: "Below", pct: "2%", color: "#0F6E56" }], note: "Excellent glucose control today. Your post-meal responses were quick and moderate. The combination of a morning walk and a lower-carb lunch seems to be working well for you." },
+    },
+  },
+  {
+    measurementId: "sleep_duration", measurementName: "Total sleep time", displayStyle: "numeric",
+    states: {
+      new: { headline: "Total sleep", value: "-- hrs", context: "Wear your device to bed to begin tracking your sleep. After a few nights, we will start building your sleep profile.", status: "Waiting for data", statusColor: "#854F0B" },
+      struggling: { headline: "Total sleep", value: "5h 12m", context: "Well below the recommended 7-9 hours. You have averaged under 6 hours for the past week. Short sleep affects recovery, mood, cognitive function, and long-term health.", status: "Insufficient", statusColor: "#A32D2D" },
+      steady: { headline: "Total sleep", value: "7h 05m", context: "Within the recommended range. You have been consistent this week, landing between 6.5 and 7.5 hours most nights.", status: "On track", statusColor: "#185FA5" },
+      thriving: { headline: "Total sleep", value: "8h 10m", context: "Excellent sleep duration with strong consistency. Your bedtime and wake time have varied by less than 30 minutes all week, which is as important as the total hours.", status: "Optimal", statusColor: "#0F6E56" },
+    },
+  },
+  {
+    measurementId: "steps", measurementName: "Daily steps", displayStyle: "trend",
+    states: {
+      new: { headline: "Daily steps", value: "--", direction: "none", trendNote: "Start carrying your device to track movement", sparkData: [] },
+      struggling: { headline: "Daily steps", value: "2,840", unit: "steps", direction: "down", trendNote: "-1,200 from last week avg", sparkData: [4200, 3800, 3100, 2900, 2600, 3000, 2840] },
+      steady: { headline: "Daily steps", value: "7,450", unit: "steps", direction: "flat", trendNote: "Consistent with your 30-day average", sparkData: [7200, 7600, 7300, 7800, 7100, 7500, 7450] },
+      thriving: { headline: "Daily steps", value: "11,200", unit: "steps", direction: "up", trendNote: "+2,400 from last month avg", sparkData: [8800, 9200, 9800, 10100, 10600, 11000, 11200] },
+    },
+  },
+  {
+    measurementId: "bp_systolic", measurementName: "Blood pressure", displayStyle: "status",
+    states: {
+      new: { headline: "Blood pressure", zones: [{ label: "Normal", pct: "<120/80", color: "#0F6E56" }, { label: "Elevated", pct: "120-129/<80", color: "#854F0B" }, { label: "High", pct: "130+/80+", color: "#A32D2D" }], note: "Take your first reading to get started. For accuracy, sit quietly for five minutes before measuring. Morning readings tend to be the most consistent." },
+      struggling: { headline: "Blood pressure", zones: [{ label: "Your reading", pct: "148/94", color: "#A32D2D" }], note: "Stage 2 hypertension range. Your last five readings have averaged 145/92. This level of blood pressure significantly increases cardiovascular risk and should be discussed with your doctor." },
+      steady: { headline: "Blood pressure", zones: [{ label: "Your reading", pct: "128/82", color: "#854F0B" }], note: "Slightly elevated. You are in the range where lifestyle changes (reducing sodium, increasing activity, managing stress) can make a meaningful difference without medication." },
+      thriving: { headline: "Blood pressure", zones: [{ label: "Your reading", pct: "118/76", color: "#0F6E56" }], note: "Optimal. Your blood pressure has been consistently in the normal range across your last 10 readings. Whatever you are doing, keep it up." },
+    },
+  },
+];
+
+
+/* ─── PAGE: Measurement Prototyper ─── */
+const TemplateCard = ({ template, stateId, stateConfig }) => {
+  const data = template.states[stateId];
+  if (!data) return null;
+  const sc = stateConfig;
+
+  if (template.displayStyle === "narrative") {
+    return (
+      <div style={{ background: "#fff", borderRadius: 14, padding: "20px 22px", border: `1px solid ${sc.color}22`, minHeight: 180 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, color: sc.color, marginBottom: 10 }}>{sc.label}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a18", marginBottom: 10 }}>{data.headline}</div>
+        <div style={{ fontSize: 13, color: "rgba(60,60,55,0.7)", lineHeight: 1.65 }}>{data.narrative}</div>
+      </div>
+    );
+  }
+
+  if (template.displayStyle === "status") {
+    return (
+      <div style={{ background: "#fff", borderRadius: 14, padding: "20px 22px", border: `1px solid ${sc.color}22`, minHeight: 180 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, color: sc.color, marginBottom: 10 }}>{sc.label}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "#1a1a18", marginBottom: 12 }}>{data.headline}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+          {(data.zones || []).map((z, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: z.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: "rgba(60,60,55,0.6)", minWidth: 70 }}>{z.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: z.color }}>{z.pct}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(60,60,55,0.6)", lineHeight: 1.6 }}>{data.note}</div>
+      </div>
+    );
+  }
+
+  if (template.displayStyle === "trend") {
+    const sparkData = data.sparkData || [];
+    const max = Math.max(...sparkData, 1);
+    const min = Math.min(...sparkData, 0);
+    const range = max - min || 1;
+    const dirArrow = data.direction === "up" ? "↑" : data.direction === "down" ? "↓" : data.direction === "flat" ? "→" : "";
+    const dirColor = data.direction === "up" ? "#A32D2D" : data.direction === "down" ? "#0F6E56" : "#185FA5";
+    return (
+      <div style={{ background: "#fff", borderRadius: 14, padding: "20px 22px", border: `1px solid ${sc.color}22`, minHeight: 180 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, color: sc.color, marginBottom: 10 }}>{sc.label}</div>
+        <div style={{ fontSize: 13, color: "rgba(60,60,55,0.5)", marginBottom: 4 }}>{data.headline}</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 32, fontWeight: 700, color: "#1a1a18" }}>{data.value}</span>
+          {data.unit && <span style={{ fontSize: 14, color: "rgba(60,60,55,0.5)" }}>{data.unit}</span>}
+          {dirArrow && <span style={{ fontSize: 18, color: dirColor, fontWeight: 600 }}>{dirArrow}</span>}
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(60,60,55,0.5)", marginBottom: 12 }}>{data.trendNote}</div>
+        {sparkData.length > 0 && (
+          <svg viewBox={`0 0 ${sparkData.length * 14} 40`} style={{ width: "100%", height: 40 }}>
+            <polyline
+              fill="none" stroke={sc.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              points={sparkData.map((v, i) => `${i * 14 + 7},${40 - ((v - min) / range) * 34 - 3}`).join(" ")}
+            />
+          </svg>
+        )}
+      </div>
+    );
+  }
+
+  // Default: numeric card
+  return (
+    <div style={{ background: "#fff", borderRadius: 14, padding: "20px 22px", border: `1px solid ${sc.color}22`, minHeight: 180 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, color: sc.color, marginBottom: 10 }}>{sc.label}</div>
+      <div style={{ fontSize: 13, color: "rgba(60,60,55,0.5)", marginBottom: 4 }}>{data.headline}</div>
+      <div style={{ fontSize: 32, fontWeight: 700, color: "#1a1a18", marginBottom: 8 }}>{data.value}</div>
+      {data.status && (
+        <div style={{ display: "inline-block", fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 10, background: `${data.statusColor}15`, color: data.statusColor, marginBottom: 10 }}>{data.status}</div>
+      )}
+      <div style={{ fontSize: 13, color: "rgba(60,60,55,0.65)", lineHeight: 1.6, marginTop: 8 }}>{data.context}</div>
+    </div>
+  );
+};
+
+
+const MeasurementPrototyperPage = () => {
+  const [selectedMeasurement, setSelectedMeasurement] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState("numeric");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [localTemplates, setLocalTemplates] = useState([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("prototype_templates");
+      if (saved) setLocalTemplates(JSON.parse(saved));
+    } catch (e) {}
+  }, []);
+
+  const allTemplates = [...PREBUILT_TEMPLATES, ...localTemplates];
+
+  const currentTemplate = allTemplates.find(
+    t => t.measurementId === selectedMeasurement && t.displayStyle === selectedStyle
+  );
+
+  const measurementOptions = useMemo(() => {
+    const seen = new Set();
+    return RAW_MEASUREMENTS.map(m => {
+      if (seen.has(m.id)) return null;
+      seen.add(m.id);
+      return { id: m.id, name: m.name };
+    }).filter(Boolean);
+  }, []);
+
+  const generateTemplate = async () => {
+    const m = RAW_MEASUREMENTS.find(x => x.id === selectedMeasurement);
+    if (!m) return;
+    setAiGenerating(true);
+    setAiError("");
+    try {
+      const style = DISPLAY_STYLES.find(s => s.id === selectedStyle);
+      const prompt = `Generate a prototype template for the health measurement "${m.name}" in "${style.label}" display style.
+
+Measurement details:
+- What it measures: ${m.whatIsMeasured}
+- Source: ${m.source}
+- Cognitive load: ${m.cognitiveLoad}
+- Impactability: ${m.impactability}
+- Examples: ${m.examples?.map(e => `${e.value}: ${e.meaning}`).join("; ")}
+- Interpretation: ${m.interpretation}
+
+Generate content for 4 user states. Return ONLY valid JSON with no markdown, matching this exact structure:
+${selectedStyle === "narrative" ? `{
+  "new": { "headline": "...", "narrative": "..." },
+  "struggling": { "headline": "...", "narrative": "..." },
+  "steady": { "headline": "...", "narrative": "..." },
+  "thriving": { "headline": "...", "narrative": "..." }
+}` : selectedStyle === "status" ? `{
+  "new": { "headline": "...", "zones": [{ "label": "...", "pct": "...", "color": "#0F6E56" }], "note": "..." },
+  "struggling": { "headline": "...", "zones": [{ "label": "...", "pct": "...", "color": "#A32D2D" }], "note": "..." },
+  "steady": { "headline": "...", "zones": [{ "label": "...", "pct": "...", "color": "#185FA5" }], "note": "..." },
+  "thriving": { "headline": "...", "zones": [{ "label": "...", "pct": "...", "color": "#0F6E56" }], "note": "..." }
+}` : selectedStyle === "trend" ? `{
+  "new": { "headline": "...", "value": "--", "direction": "none", "trendNote": "...", "sparkData": [] },
+  "struggling": { "headline": "...", "value": "...", "unit": "...", "direction": "up or down", "trendNote": "...", "sparkData": [7 numbers] },
+  "steady": { "headline": "...", "value": "...", "unit": "...", "direction": "flat", "trendNote": "...", "sparkData": [7 numbers] },
+  "thriving": { "headline": "...", "value": "...", "unit": "...", "direction": "down or up depending on metric", "trendNote": "...", "sparkData": [7 numbers] }
+}` : `{
+  "new": { "headline": "...", "value": "-- unit", "context": "...", "status": "Waiting for data", "statusColor": "#854F0B" },
+  "struggling": { "headline": "...", "value": "...", "context": "...", "status": "...", "statusColor": "#A32D2D" },
+  "steady": { "headline": "...", "value": "...", "context": "...", "status": "...", "statusColor": "#185FA5" },
+  "thriving": { "headline": "...", "value": "...", "context": "...", "status": "...", "statusColor": "#0F6E56" }
+}`}
+
+Use realistic values. Write in plain, warm language. Do not use em dashes. Keep each text block to 2-3 sentences maximum.`;
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
+      });
+      const data = await res.json();
+      const content = data.content?.[0]?.text || data.text || "";
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Could not parse AI response");
+      const states = JSON.parse(jsonMatch[0]);
+
+      const newTemplate = {
+        measurementId: m.id,
+        measurementName: m.name,
+        displayStyle: selectedStyle,
+        states,
+        generated: true,
+        generatedAt: new Date().toISOString(),
+      };
+
+      const updated = [...localTemplates, newTemplate];
+      setLocalTemplates(updated);
+      localStorage.setItem("prototype_templates", JSON.stringify(updated));
+    } catch (e) {
+      setAiError("Failed to generate template. Try again.");
+      console.error(e);
+    }
+    setAiGenerating(false);
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "#1a1a18", letterSpacing: -0.5 }}>Measurement prototyper</h1>
+        <p style={{ fontSize: 15, color: "rgba(60,60,55,0.7)", lineHeight: 1.6, maxWidth: 640 }}>
+          Pick a measurement and a display style to see what it looks like across four user states: someone with no data, someone struggling, someone steady, and someone thriving. Use this in meetings to quickly visualize how a design choice holds up across real scenarios.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 280px" }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(60,60,55,0.5)", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 6 }}>Measurement</label>
+          <select value={selectedMeasurement} onChange={e => setSelectedMeasurement(e.target.value)} style={{
+            width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 10,
+            border: "1px solid rgba(120,120,110,0.2)", background: "#fff", cursor: "pointer",
+          }}>
+            <option value="">Choose a measurement...</option>
+            {measurementOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+        <div style={{ flex: "1 1 220px" }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(60,60,55,0.5)", textTransform: "uppercase", letterSpacing: 0.8, display: "block", marginBottom: 6 }}>Display style</label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {DISPLAY_STYLES.map(s => (
+              <Pill key={s.id} label={s.label} active={selectedStyle === s.id} onClick={() => setSelectedStyle(s.id)} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {selectedMeasurement && !currentTemplate && (
+        <div style={{ textAlign: "center", padding: "40px 20px", border: "1px dashed rgba(120,120,110,0.25)", borderRadius: 12, marginBottom: 24 }}>
+          <p style={{ fontSize: 14, color: "rgba(60,60,55,0.6)", marginBottom: 16 }}>No pre-built template for this combination yet.</p>
+          <button onClick={generateTemplate} disabled={aiGenerating} style={{
+            padding: "10px 24px", fontSize: 14, fontWeight: 600, borderRadius: 10, border: "none",
+            background: aiGenerating ? "rgba(120,120,110,0.1)" : "#1D9E75", color: aiGenerating ? "rgba(60,60,55,0.5)" : "#fff",
+            cursor: aiGenerating ? "wait" : "pointer",
+          }}>
+            {aiGenerating ? "Generating..." : "Generate with AI"}
+          </button>
+          {aiError && <p style={{ fontSize: 12, color: "#A32D2D", marginTop: 8 }}>{aiError}</p>}
+        </div>
+      )}
+
+      {selectedMeasurement && currentTemplate && (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+            {USER_STATES.map(s => (
+              <TemplateCard key={s.id} template={currentTemplate} stateId={s.id} stateConfig={s} />
+            ))}
+          </div>
+          {currentTemplate.generated && (
+            <p style={{ fontSize: 11, color: "rgba(60,60,55,0.4)", marginTop: 12, textAlign: "right" }}>
+              Generated by AI and saved to your library
+            </p>
+          )}
+        </div>
+      )}
+
+      {!selectedMeasurement && (
+        <div style={{ padding: "40px 20px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "rgba(60,60,55,0.45)" }}>Select a measurement above to see prototypes across user states.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+/* ─── PAGE: Prototype Library ─── */
+const PrototypeLibraryPage = () => {
+  const [localTemplates, setLocalTemplates] = useState([]);
+  const [filterMeasurement, setFilterMeasurement] = useState("");
+  const [filterStyle, setFilterStyle] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("prototype_templates");
+      if (saved) setLocalTemplates(JSON.parse(saved));
+    } catch (e) {}
+  }, []);
+
+  const allTemplates = [...PREBUILT_TEMPLATES, ...localTemplates];
+
+  const filtered = allTemplates.filter(t => {
+    if (filterMeasurement && t.measurementId !== filterMeasurement) return false;
+    if (filterStyle && t.displayStyle !== filterStyle) return false;
+    return true;
+  });
+
+  const measurementNames = useMemo(() => {
+    const seen = {};
+    allTemplates.forEach(t => { seen[t.measurementId] = t.measurementName; });
+    return Object.entries(seen).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allTemplates]);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: "#1a1a18", letterSpacing: -0.5 }}>Prototype library</h1>
+        <p style={{ fontSize: 15, color: "rgba(60,60,55,0.7)", lineHeight: 1.6, maxWidth: 640 }}>
+          All pre-built and AI-generated measurement prototypes in one place. Browse by measurement or display style to find examples and inspiration.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+        <select value={filterMeasurement} onChange={e => setFilterMeasurement(e.target.value)} style={{
+          padding: "8px 14px", fontSize: 13, borderRadius: 10,
+          border: "1px solid rgba(120,120,110,0.2)", background: "#fff",
+        }}>
+          <option value="">All measurements</option>
+          {measurementNames.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+        </select>
+        <select value={filterStyle} onChange={e => setFilterStyle(e.target.value)} style={{
+          padding: "8px 14px", fontSize: 13, borderRadius: 10,
+          border: "1px solid rgba(120,120,110,0.2)", background: "#fff",
+        }}>
+          <option value="">All styles</option>
+          {DISPLAY_STYLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        <span style={{ fontSize: 12, color: "rgba(60,60,55,0.45)", alignSelf: "center" }}>{filtered.length} templates</span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        {filtered.map((t, i) => (
+          <div key={`${t.measurementId}-${t.displayStyle}-${i}`} style={{
+            border: "1px solid rgba(120,120,110,0.12)", borderRadius: 14, padding: "20px 22px",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a18" }}>{t.measurementName}</span>
+                <span style={{ fontSize: 12, color: "rgba(60,60,55,0.45)", marginLeft: 10 }}>{DISPLAY_STYLES.find(s => s.id === t.displayStyle)?.label}</span>
+              </div>
+              {t.generated && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "rgba(83,74,183,0.08)", color: "#534AB7" }}>AI generated</span>}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+              {USER_STATES.map(s => (
+                <TemplateCard key={s.id} template={t} stateId={s.id} stateConfig={s} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
 const LandingPage = ({ onNavigate }) => {
   const measurements = [
     {
@@ -5885,35 +6514,27 @@ const LandingPage = ({ onNavigate }) => {
       icon: "5",
     },
     {
-      id: "approaches", label: "Framing choices",
+      id: "approaches", label: "Framing & combos",
       desc: "Twelve different ways to frame someone's health, from raw data only to a single overall number to impact-focused views. Each with a visual example, when to use it, and what to watch out for.",
       icon: "6",
     },
-  ];
-
-  const caseStudies = [
     {
-      id: "med_adherence", label: "Medication adherence",
-      desc: "A worked example showing the same data across three levels (individual measurements, category, overall) and three design philosophies (score-focused, behavior-focused, support-focused). Nine mockups total.",
-      icon: "◈",
+      id: "signals", label: "Signal opportunities",
+      desc: "Where combining signals reveals something none of them show alone. The gaps in current products and the opportunities for better, more contextual health experiences.",
+      icon: "7",
     },
   ];
 
   const tools = [
     {
-      id: "decision", label: "Decision helper",
-      desc: "Should your feature include a score? Walk through a set of questions to figure out what fits your product context.",
-      icon: "?",
-    },
-    {
-      id: "persona", label: "Same person, different lens",
-      desc: "Describe a person, then see what their health data looks like when they're doing great, getting by, and struggling.",
+      id: "prototyper", label: "Measurement prototyper",
+      desc: "Pick a measurement and display style, then see what it looks like across four user states: new, struggling, steady, and thriving. Generate new prototypes on the fly with AI.",
       icon: "◉",
     },
     {
-      id: "coaching", label: "Coaching topic options",
-      desc: "Pick a health coaching topic and see what the experience looks like across different presentation approaches and cadences.",
-      icon: "♡",
+      id: "decision", label: "Decision helper",
+      desc: "Should your feature include a score? Walk through a set of questions to figure out what fits your product context.",
+      icon: "?",
     },
   ];
 
@@ -5978,10 +6599,10 @@ const LandingPage = ({ onNavigate }) => {
       </div>
 
       <div style={{ marginBottom: 32 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(60,60,55,0.35)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 14 }}>Workshop</p>
-        {renderCardGrid([...caseStudies, {
-          id: "library", label: "Library",
-          desc: "View and compare the persona and coaching views you've saved. Bundle sets into collections and share them with others.",
+        <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(60,60,55,0.35)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 14 }}>Prototype library</p>
+        {renderCardGrid([{
+          id: "prototype_library", label: "Prototype library",
+          desc: "Browse all pre-built and AI-generated measurement prototypes. See how different measurements look across display styles and user states.",
           icon: "◘",
         }], "small")}
       </div>
@@ -6004,12 +6625,11 @@ const PAGES = [
   { id: "overall", label: "Overall", section: "Measurements", icon: "3" },
   { id: "representation", label: "Numbers & narratives", section: "Presentation", icon: "4" },
   { id: "trends", label: "Time & trends", section: "Presentation", icon: "5" },
-  { id: "approaches", label: "Framing choices", section: "Presentation", icon: "6" },
+  { id: "approaches", label: "Framing & combos", section: "Presentation", icon: "6" },
+  { id: "signals", label: "Signal opportunities", section: "Presentation", icon: "7" },
+  { id: "prototyper", label: "Measurement prototyper", section: "Tools", icon: "◉" },
   { id: "decision", label: "Decision helper", section: "Tools", icon: "?" },
-  { id: "persona", label: "Same person, different lens", section: "Tools", icon: "◉" },
-  { id: "coaching", label: "Coaching topic options", section: "Tools", icon: "♡" },
-  { id: "med_adherence", label: "Medication adherence", section: "Workshop", icon: "◈" },
-  { id: "library", label: "Library", section: "Workshop", icon: "◘" },
+  { id: "prototype_library", label: "Prototype library", section: "", icon: "◘" },
 ];
 
 const Nav = ({ current, onChange }) => {
@@ -6070,11 +6690,10 @@ export default function HealthTrackingApp() {
       case "representation": return <RepresentationPage />;
       case "trends": return <TimeAndTrendsPage />;
       case "approaches": return <ApproachesPage />;
-      case "med_adherence": return <MedAdherenceCaseStudy />;
+      case "signals": return <SignalOpportunitiesPage />;
+      case "prototyper": return <MeasurementPrototyperPage />;
       case "decision": return <DecisionHelperPage />;
-      case "persona": return <PersonaLensPage />;
-      case "coaching": return <CoachingToolPage />;
-      case "library": return <LibraryPage />;
+      case "prototype_library": return <PrototypeLibraryPage />;
       default: return <LandingPage onNavigate={setPage} />;
     }
   };
